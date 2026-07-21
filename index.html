@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seed-to-Sale | CannaTech Tracker</title>
+    <!-- Подключаем Tailwind CSS для современного дизайна -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Настройка цветовой палитры в стиле CannaTech
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        canna: {
+                            dark: '#0D1117',
+                            card: '#161B22',
+                            green: '#10B981',
+                            deep: '#1B4D3E',
+                            text: '#E5E7EB'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-canna-dark text-canna-text font-sans antialiased min-h-screen p-6">
+
+    <div class="max-w-4xl mx-auto">
+        <!-- Уведомление для работодателей -->
+        <div class="bg-canna-deep border border-canna-green text-canna-text px-4 py-3 rounded-lg relative mb-8 shadow-lg" role="alert">
+            <strong class="font-bold">Career Notice:</strong>
+            <span class="block sm:inline"> This beta application and the associated GitHub profile were created specifically to showcase engineering capabilities for software development roles in the Cannabis & AgriTech industry.</span>
+        </div>
+
+        <header class="mb-10 text-center">
+            <h1 class="text-4xl font-extrabold text-white mb-2">Seed-to-Sale <span class="text-canna-green">Beta</span></h1>
+            <p class="text-gray-400">Automated growth cycle tracking for Photoperiod and Autoflower strains.</p>
+        </header>
+
+        <main class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <!-- Форма добавления -->
+            <div class="bg-canna-card p-6 rounded-xl border border-gray-800 shadow-2xl h-fit">
+                <h2 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">Register New Batch</h2>
+                <form id="plantForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">Strain Name</label>
+                        <input type="text" id="strainName" required class="w-full bg-canna-dark border border-gray-700 rounded p-2 text-white focus:outline-none focus:border-canna-green transition-colors" placeholder="e.g. Northern Lights">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">Genetics / Type</label>
+                        <select id="strainType" class="w-full bg-canna-dark border border-gray-700 rounded p-2 text-white focus:outline-none focus:border-canna-green transition-colors">
+                            <option value="autoflower">Autoflower (~80 days)</option>
+                            <option value="photoperiod">Photoperiod (~120 days)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">Planting Date</label>
+                        <input type="date" id="plantDate" required class="w-full bg-canna-dark border border-gray-700 rounded p-2 text-white focus:outline-none focus:border-canna-green transition-colors">
+                    </div>
+                    <button type="submit" class="w-full bg-canna-green hover:bg-green-500 text-canna-dark font-bold py-2 px-4 rounded transition-colors mt-4">
+                        Initialize Cycle
+                    </button>
+                </form>
+            </div>
+
+            <!-- Список активных циклов -->
+            <div class="md:col-span-2">
+                <h2 class="text-xl font-semibold mb-4">Active Batches</h2>
+                <div id="batchesContainer" class="space-y-4">
+                    <!-- Сюда динамически добавляются карточки через JS -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Устанавливаем сегодняшнюю дату в форму по умолчанию
+        document.getElementById('plantDate').valueAsDate = new Date();
+
+        const form = document.getElementById('plantForm');
+        const container = document.getElementById('batchesContainer');
+
+        // Загрузка данных из локальной памяти браузера
+        let batches = JSON.parse(localStorage.getItem('cannaBatches')) || [];
+
+        // Функция сохранения
+        function saveBatches() {
+            localStorage.setItem('cannaBatches', JSON.stringify(batches));
+            renderBatches();
+        }
+
+        // Логика расчета даты харвеста
+        function calculateHarvest(dateStr, type) {
+            const date = new Date(dateStr);
+            const daysToAdd = type === 'autoflower' ? 80 : 120;
+            date.setDate(date.getDate() + daysToAdd);
+            return date;
+        }
+
+        // Отрисовка интерфейса
+        function renderBatches() {
+            container.innerHTML = '';
+            
+            if(batches.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 italic">No active batches found. Start a new cycle.</p>';
+                return;
+            }
+
+            batches.forEach((batch, index) => {
+                const harvestDate = calculateHarvest(batch.date, batch.type);
+                const today = new Date();
+                const daysLeft = Math.ceil((harvestDate - today) / (1000 * 60 * 60 * 24));
+                
+                // Статус цикла
+                let statusBadge = '';
+                if (daysLeft < 0) {
+                    statusBadge = '<span class="bg-purple-900 text-purple-200 text-xs px-2 py-1 rounded border border-purple-500">Ready for Harvest</span>';
+                } else if (daysLeft < 20) {
+                    statusBadge = '<span class="bg-yellow-900 text-yellow-200 text-xs px-2 py-1 rounded border border-yellow-500">Late Flowering</span>';
+                } else {
+                    statusBadge = '<span class="bg-canna-deep text-canna-green text-xs px-2 py-1 rounded border border-canna-green">Vegetative / Early Bloom</span>';
+                }
+
+                const card = document.createElement('div');
+                card.className = 'bg-canna-card p-4 rounded-xl border border-gray-800 flex flex-col sm:flex-row justify-between items-start sm:items-center shadow-md';
+                card.innerHTML = `
+                    <div class="mb-4 sm:mb-0">
+                        <div class="flex items-center gap-3 mb-1">
+                            <h3 class="text-lg font-bold text-white">${batch.name}</h3>
+                            ${statusBadge}
+                        </div>
+                        <p class="text-sm text-gray-400">Type: <span class="capitalize text-gray-300">${batch.type}</span> | Planted: ${batch.date}</p>
+                        <p class="text-sm text-canna-green mt-1">Est. Harvest: ${harvestDate.toISOString().split('T')[0]} 
+                            ${daysLeft >= 0 ? `(${daysLeft} days left)` : ''}
+                        </p>
+                    </div>
+                    <button onclick="deleteBatch(${index})" class="text-red-500 hover:text-red-400 text-sm font-semibold transition-colors">
+                        [ Terminate ]
+                    </button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // Добавление нового цикла
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const newBatch = {
+                name: document.getElementById('strainName').value,
+                type: document.getElementById('strainType').value,
+                date: document.getElementById('plantDate').value
+            };
+            batches.push(newBatch);
+            saveBatches();
+            form.reset();
+            document.getElementById('plantDate').valueAsDate = new Date();
+        });
+
+        // Удаление цикла
+        window.deleteBatch = function(index) {
+            batches.splice(index, 1);
+            saveBatches();
+        }
+
+        // Первичная отрисовка при загрузке
+        renderBatches();
+    </script>
+</body>
+</html>
